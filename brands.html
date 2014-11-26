@@ -1,0 +1,8 @@
+<h1>Select a Camera Brand</h1>
+
+<ul>
+  {{ $brands := .Body}}
+  {{ range $_, $element := $brands }}
+  <li>{{$element.Name}}</li>
+  {{end}}
+</ul>
