@@ -4,6 +4,7 @@ import (
 	// "errors"
 	"encoding/json"
 	"flag"
+	"github.com/gorilla/mux"
 	// "fmt"
 	"html/template"
 	// "io"
@@ -11,6 +12,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	// "net/url"
 	// "reflect"
 	// "regexp"
 )
@@ -39,6 +41,15 @@ func getCameraBrands() []byte {
 	return brands
 }
 
+func getBrandModels(brand string) []byte {
+	method := "flickr.cameras.getBrandModels&brand=" + brand + "&api_key="
+	request := getRequestUrl(method)
+	resp, _ := http.Get(request)
+	defer resp.Body.Close()
+	models, _ := ioutil.ReadAll(resp.Body)
+	return models
+}
+
 // http://mholt.github.io/json-to-go/
 type Cameras struct {
 	Brands struct {
@@ -49,12 +60,46 @@ type Cameras struct {
 	} `json:"brands"`
 }
 
+// type Models struct {
+// 	Cameras struct {
+// 		Brand  string `json:"brand"`
+// 		Camera []struct {
+// 			Id   string `json:"id"`
+// 			Name struct {
+// 				Content string `json:"_content"`
+// 			} `json:"name"`
+// 			Details struct {
+// 				Megapixels struct {
+// 					Content int `json:"_content"`
+// 				} `json:"megapixels"`
+// 				LcdScreenSize struct {
+// 					Content int `json:"_content"`
+// 				} `json:"lcd_screen_size"`
+// 				MemoryType struct {
+// 					Content string `json:"_content"`
+// 				} `json:"memory_type"`
+// 			} `json:"details"`
+// 			Images struct {
+// 				Small struct {
+// 					Content string `json:"_content"`
+// 				} `json:"small"`
+// 				Large struct {
+// 					Content string `json:"_content"`
+// 				} `json:"large"`
+// 			} `json:"images"`
+// 		} `json:"camera"`
+// 	} `json:"cameras"`
+// 	Stat string `json:"stat"`
+// }
+
 type Page struct {
 	Title string
 	Body  interface{}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	log.Print("index handler called")
+	log.Print(r.URL.Path)
 	cameraData := getCameraBrands()
 	var c Cameras
 	_ = json.Unmarshal(cameraData, &c)
@@ -62,6 +107,17 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	p := Page{"brands", viewData}
 	renderTemplate(w, "brands", p)
 
+}
+
+func brandHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	brand := vars["brand"]
+	modelsData := getBrandModels(brand)
+	// var c Cameras
+	// _ = json.Unmarshal(modelsData, &c)
+	// viewData := c.Brands.Brand
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(modelsData)
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
@@ -73,8 +129,14 @@ func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
 
 func main() {
 
+	r := mux.NewRouter()
+	r.HandleFunc("/", indexHandler).Methods("GET")
+	r.HandleFunc("/brands/{brand}", brandHandler).Methods("GET")
+	http.Handle("/", r)
+
 	flag.Parse()
-	http.HandleFunc("/", indexHandler)
+	// http.HandleFunc("/brands/{:brand}", brandHandler)
+	// http.HandleFunc("/", indexHandler)
 	if *addr {
 		l, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
