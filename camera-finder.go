@@ -25,7 +25,10 @@ const (
 
 var (
 	addr      = flag.Bool("addr", false, "find open address and print to final-port.txt")
-	templates = template.Must(template.ParseFiles("brands.html"))
+	templates = map[string]*template.Template{
+		"brands": template.Must(template.ParseFiles("templates/brands.html", "templates/index.html")),
+		"index":  template.Must(template.ParseFiles("templates/index.html")),
+	}
 )
 
 func getRequestUrl(method string) string {
@@ -113,15 +116,12 @@ func brandHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	brand := vars["brand"]
 	modelsData := getBrandModels(brand)
-	// var c Cameras
-	// _ = json.Unmarshal(modelsData, &c)
-	// viewData := c.Brands.Brand
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(modelsData)
 }
 
 func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
-	err := templates.ExecuteTemplate(w, tmpl+".html", data)
+	err := templates[tmpl].ExecuteTemplate(w, tmpl+".html", data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -135,8 +135,6 @@ func main() {
 	http.Handle("/", r)
 
 	flag.Parse()
-	// http.HandleFunc("/brands/{:brand}", brandHandler)
-	// http.HandleFunc("/", indexHandler)
 	if *addr {
 		l, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {

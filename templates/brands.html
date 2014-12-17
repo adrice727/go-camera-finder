@@ -1,0 +1,18 @@
+{{ define "body"}}
+
+<h1>Select a Camera Brand</h1>
+
+<div id="main">
+  <select id="brands" required onchange="apiService.get(this, this.value, 'models')">
+    <option value="">Select a Brand</option>
+    {{ $brands := .Body}}
+    {{ range $_, $element := $brands }}
+    <option value="{{$element.Id}}">{{$element.Name}}</option>
+    {{end}}
+  </select>
+</div>
+
+{{end}}
+
+
+{{template  "index"}}
